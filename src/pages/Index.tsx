@@ -68,6 +68,8 @@ const Index = () => {
         onDeleteRegion={deleteRegion}
         onAddPin={(name, lat, lng) => selectedId && handleAddPin(selectedId, name, lat, lng)}
         onDeletePin={deletePin}
+        onAddCityBound={(city) => selectedId && addCityBound(selectedId, city)}
+        onDeleteCityBound={deleteCityBound}
         onStartDrawing={handleStartDrawing}
         onStopDrawing={() => setDrawingForId(null)}
         drawingForId={drawingForId}

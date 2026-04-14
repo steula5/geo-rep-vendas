@@ -29,13 +29,14 @@ export function useRepresentatives() {
     return REPRESENTATIVE_COLORS.find(c => !usedColors.includes(c)) || REPRESENTATIVE_COLORS[representatives.length % REPRESENTATIVE_COLORS.length];
   }, [representatives]);
 
-  const addRepresentative = useCallback((data: Omit<Representative, 'id' | 'regions' | 'pins'>) => {
+  const addRepresentative = useCallback((data: Omit<Representative, 'id' | 'regions' | 'pins' | 'cityBounds'>) => {
     const rep: Representative = {
       ...data,
       id: crypto.randomUUID(),
       color: data.color || getNextColor(),
       regions: [],
       pins: [],
+      cityBounds: [],
     };
     setRepresentatives(prev => [...prev, rep]);
     return rep;
@@ -74,6 +75,18 @@ export function useRepresentatives() {
     ));
   }, []);
 
+  const addCityBound = useCallback((repId: string, city: import('@/types/representative').CityBound) => {
+    setRepresentatives(prev => prev.map(r =>
+      r.id === repId ? { ...r, cityBounds: [...(r.cityBounds || []), city] } : r
+    ));
+  }, []);
+
+  const deleteCityBound = useCallback((repId: string, cityId: string) => {
+    setRepresentatives(prev => prev.map(r =>
+      r.id === repId ? { ...r, cityBounds: (r.cityBounds || []).filter(c => c.id !== cityId) } : r
+    ));
+  }, []);
+
   const findRepresentativeByPoint = useCallback((lat: number, lng: number): Representative | null => {
     // Simple point-in-polygon check
     for (const rep of representatives) {
@@ -101,6 +114,8 @@ export function useRepresentatives() {
     deleteRegion,
     addPin,
     deletePin,
+    addCityBound,
+    deleteCityBound,
     findRepresentativeByPoint,
   };
 }

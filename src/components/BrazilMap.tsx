@@ -39,6 +39,10 @@ export default function BrazilMap({
   const mapRef = useRef<L.Map | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const polygonsRef = useRef<L.LayerGroup>(L.layerGroup());
+  const drawingLayerRef = useRef<L.LayerGroup>(L.layerGroup());
+  const currentPolygonRef = useRef<L.Polyline | null>(null);
+  const startMarkerRef = useRef<L.Marker | null>(null);
+  const [cityBoundaries, setCityBoundaries] = useState<Record<string, any>>({});
   const overlayRef = useRef<L.ImageOverlay | null>(null);
   const searchMarkerRef = useRef<L.Marker | null>(null);
   const onRegionCreatedRef = useRef(onRegionCreated);
@@ -76,6 +80,40 @@ export default function BrazilMap({
     };
   }, []);
 
+  // Fetch missing city boundaries asynchronously
+  useEffect(() => {
+    const fetchCityBoundaries = async () => {
+      const neededCodeIds = new Set<string>();
+      representatives.forEach(rep => {
+        if (rep.cityBounds) {
+          rep.cityBounds.forEach(city => {
+            if (!cityBoundaries[city.id]) {
+              neededCodeIds.add(city.id);
+            }
+          });
+        }
+      });
+
+      if (neededCodeIds.size === 0) return;
+
+      const newBoundaries = { ...cityBoundaries };
+      await Promise.all(Array.from(neededCodeIds).map(async (id) => {
+        try {
+          const res = await fetch(`https://servicodados.ibge.gov.br/api/v3/malhas/municipios/${id}?formato=application/vnd.geo+json`);
+          const data = await res.json();
+          newBoundaries[id] = data;
+        } catch (e) {
+          console.error('Failed to fetch IBGE boundaries for city', id, e);
+        }
+      }));
+
+      setCityBoundaries(newBoundaries);
+    };
+
+    fetchCityBoundaries();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [representatives]);
+
   // Draw polygons for all representatives
   useEffect(() => {
     const map = mapRef.current;
@@ -107,6 +145,35 @@ export default function BrazilMap({
             layer.on('click', () => onSelectRepresentative(rep.id));
           }
         }).addTo(polygonsRef.current);
+      }
+
+      // Draw specific city contours from fetched GeoJSON
+      if (rep.cityBounds && rep.cityBounds.length > 0) {
+        rep.cityBounds.forEach(city => {
+          const geoJsonData = cityBoundaries[city.id];
+          if (geoJsonData) {
+            L.geoJSON(geoJsonData, {
+              style: {
+                color: rep.color,
+                weight: selectedId === rep.id ? 3 : 2,
+                fillColor: rep.color,
+                fillOpacity: selectedId === rep.id ? 0.4 : 0.25,
+              },
+              onEachFeature: (_, layer) => {
+                layer.bindTooltip(`${rep.name} / ${city.name} - ${city.state}`, { direction: 'top' });
+                layer.bindPopup(`
+                  <div style="min-width:180px">
+                    <strong style="font-size:14px">${city.name} - ${city.state}</strong><br/>
+                    <span style="color:${rep.color}; font-weight: 500">${rep.name}</span><br/>
+                    📞 ${rep.phone}<br/>
+                    ✉️ ${rep.email}
+                  </div>
+                `);
+                layer.on('click', () => onSelectRepresentative(rep.id));
+              }
+            }).addTo(polygonsRef.current);
+          }
+        });
       }
 
       // Draw custom regions
@@ -163,7 +230,7 @@ export default function BrazilMap({
         });
       }
     });
-  }, [representatives, selectedId, onSelectRepresentative]);
+  }, [representatives, selectedId, cityBoundaries, onSelectRepresentative]);
 
   // Clean up drawing artifacts
   const cleanupDrawing = useCallback(() => {

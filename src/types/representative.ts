@@ -12,6 +12,7 @@ export interface Representative {
   color: string;
   regions: Region[];
   pins?: Pin[];
+  cityBounds?: CityBound[];
 }
 
 export interface Pin {
@@ -19,6 +20,12 @@ export interface Pin {
   name: string;
   lat: number;
   lng: number;
+}
+
+export interface CityBound {
+  id: string;
+  name: string;
+  state: string;
 }
 
 export interface Region {

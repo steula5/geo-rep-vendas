@@ -8,7 +8,9 @@ import { Slider } from '@/components/ui/slider';
 import CitySearch from '@/components/CitySearch';
 import RepresentativeLegend from '@/components/RepresentativeLegend';
 import RepresentativeForm from '@/components/RepresentativeForm';
-import { Representative } from '@/types/representative';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Representative, CityBound } from '@/types/representative';
+import { CityBoundSearch } from './CityBoundSearch';
 
 interface AppSidebarProps {
   representatives: Representative[];
@@ -20,6 +22,8 @@ interface AppSidebarProps {
   onDeleteRegion: (repId: string, regionId: string) => void;
   onAddPin: (name: string, lat: number, lng: number) => void;
   onDeletePin: (repId: string, pinId: string) => void;
+  onAddCityBound: (city: CityBound) => void;
+  onDeleteCityBound: (repId: string, cityId: string) => void;
   onStartDrawing: (id: string) => void;
   onStopDrawing: () => void;
   drawingForId: string | null;
@@ -42,6 +46,8 @@ export default function AppSidebar({
   onDeleteRegion,
   onAddPin,
   onDeletePin,
+  onAddCityBound,
+  onDeleteCityBound,
   onStartDrawing,
   onStopDrawing,
   drawingForId,
@@ -227,6 +233,35 @@ export default function AppSidebar({
                           )}
                         </div>
                         
+                        {/* City Bounds */}
+                        <div className="space-y-1">
+                          <div className="text-xs text-sidebar-muted font-medium">
+                            🏙️ {(rep.cityBounds || []).length} municípios(s)
+                          </div>
+                          {(rep.cityBounds || []).length > 0 && (
+                            <div className="space-y-0.5">
+                              {rep.cityBounds!.map((city) => (
+                                <div
+                                  key={city.id}
+                                  className="flex items-center justify-between px-2 py-1 rounded bg-sidebar-accent/50 group"
+                                >
+                                  <span className="text-xs text-sidebar-muted flex items-center gap-1 truncate w-40">
+                                    <Map className="h-3 w-3 flex-shrink-0" style={{ color: rep.color }} />
+                                    <span className="truncate" title={city.name}>{city.name} - {city.state}</span>
+                                  </span>
+                                  <button
+                                    onClick={() => onDeleteCityBound(rep.id, city.id)}
+                                    className="text-destructive hover:text-destructive/80 opacity-60 hover:opacity-100 transition-opacity p-0.5"
+                                    title="Excluir município"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        
                         {/* Pins */}
                         <div className="space-y-1">
                           <div className="text-xs text-sidebar-muted font-medium">
@@ -258,7 +293,8 @@ export default function AppSidebar({
                       </div>
 
                       {/* Action buttons */}
-                      <div className="flex gap-1 flex-wrap">
+                      <CityBoundSearch onAddCity={onAddCityBound} />
+                      <div className="flex gap-2 mt-3 pt-3 border-t border-sidebar-border/50">
                         <Button
                           size="sm"
                           variant="ghost"

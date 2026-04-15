@@ -87,7 +87,21 @@ export default function AppSidebar({
 
   const handleExportHtml = async () => {
     try {
-      const htmlContent = await generateHtmlExport(representatives);
+      // Fetch logo and convert to base64 for monolithic export
+      let logoBase64 = "";
+      try {
+        const response = await fetch('/Logo.png');
+        const blob = await response.blob();
+        const reader = new FileReader();
+        logoBase64 = await new Promise((resolve) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.readAsDataURL(blob);
+        });
+      } catch (err) {
+        console.warn("Logo not found for export", err);
+      }
+
+      const htmlContent = await generateHtmlExport(representatives, logoBase64);
       const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -141,11 +155,10 @@ export default function AppSidebar({
     <div className="w-80 h-full flex flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border overflow-hidden">
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
-        <div className="flex items-center gap-2 mb-1">
-          <Map className="h-5 w-5 text-primary" />
-          <h1 className="text-lg font-bold">GeoRep</h1>
+        <div className="flex items-center justify-center mb-1 py-1">
+          <img src="/Logo.png" alt="Steula Logo" className="h-10 w-auto object-contain" />
         </div>
-        <p className="text-xs text-sidebar-muted">Gestão de Regiões Comerciais</p>
+        <p className="text-[10px] text-center text-sidebar-muted uppercase tracking-widest font-medium">Gestão de Vendas</p>
       </div>
 
       {/* Scrollable content */}

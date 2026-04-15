@@ -121,8 +121,8 @@ export default function BrazilMap({
 
     polygonsRef.current.clearLayers();
 
+    // Pass 1: Draw ALL full states first (Bottom-most layer)
     representatives.forEach(rep => {
-      // Draw full states from GeoJSON
       if (rep.states && rep.states.length > 0) {
         L.geoJSON(brazilStatesData as any, {
           filter: (feature) => rep.states.includes(feature.properties.sigla),
@@ -146,8 +146,10 @@ export default function BrazilMap({
           }
         }).addTo(polygonsRef.current);
       }
+    });
 
-      // Draw specific city contours from fetched GeoJSON
+    // Pass 2: Draw ALL city contours
+    representatives.forEach(rep => {
       if (rep.cityBounds && rep.cityBounds.length > 0) {
         rep.cityBounds.forEach(city => {
           const geoJsonData = cityBoundaries[city.id];
@@ -175,8 +177,10 @@ export default function BrazilMap({
           }
         });
       }
+    });
 
-      // Draw custom regions
+    // Pass 3: Draw ALL custom regions
+    representatives.forEach(rep => {
       rep.regions.forEach(region => {
         const polygon = L.polygon(region.points as L.LatLngExpression[], {
           color: rep.color,
@@ -198,8 +202,10 @@ export default function BrazilMap({
         polygon.on('click', () => onSelectRepresentative(rep.id));
         polygon.addTo(polygonsRef.current);
       });
+    });
 
-      // Draw pins
+    // Pass 4: Draw ALL pins (Top-most layer)
+    representatives.forEach(rep => {
       if (rep.pins) {
         rep.pins.forEach(pin => {
           const marker = L.circleMarker([pin.lat, pin.lng], {

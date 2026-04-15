@@ -1,7 +1,7 @@
 import brazilStatesData from '@/data/brazil-states.json';
 import { Representative } from '@/types/representative';
 
-export async function generateHtmlExport(representatives: Representative[]): Promise<string> {
+export async function generateHtmlExport(representatives: Representative[], logoBase64?: string): Promise<string> {
   const html = `<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -13,6 +13,23 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
     body { padding: 0; margin: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; }
     html, body, #map { height: 100vh; width: 100vw; }
     
+    .logo-container {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      z-index: 1001;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 10px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      max-width: 150px;
+    }
+    .logo-container img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
     .legend-container {
       position: absolute; 
       bottom: 30px; 
@@ -90,6 +107,12 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
 <body>
   <div id="map"></div>
   
+  ${logoBase64 ? `
+  <div class="logo-container">
+    <img src="${logoBase64}" alt="Logo" />
+  </div>
+  ` : ''}
+
   <div class="search-container">
     <input type="text" id="city-search" placeholder="Buscar cidade... (ex: Campinas, SP)" onkeypress="if(event.key === 'Enter') searchCity()" />
     <button onclick="searchCity()">Buscar</button>
@@ -127,19 +150,14 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
 
     // Draw Map Layers
     async function init() {
+      // Pass 1: States (Bottom)
       representatives.forEach(rep => {
-        // 1. Draw States
         if (rep.states && rep.states.length > 0) {
           L.geoJSON(brazilStatesData, {
             filter: function(feature) { return rep.states.includes(feature.properties.sigla); },
-            style: { 
-              color: rep.color, 
-              weight: 2, 
-              fillColor: rep.color, 
-              fillOpacity: 0.25 
-            },
+            style: { color: rep.color, weight: 2, fillColor: rep.color, fillOpacity: 0.25 },
             onEachFeature: function(feature, layer) {
-              layer.bindTooltip(rep.name + ' / ' + feature.properties.name, { direction: 'top', className: 'map-tooltip' });
+              layer.bindTooltip(rep.name + ' / ' + feature.properties.name, { direction: 'top' });
               layer.bindPopup(
                 '<div style="min-width:180px">' +
                 '<strong style="font-size:14px">' + feature.properties.name + '</strong><br/>' +
@@ -151,64 +169,14 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
             }
           }).addTo(map);
         }
-
-        // 2. Draw Custom Regions
-        if (rep.regions && rep.regions.length > 0) {
-          rep.regions.forEach(function(region) {
-            const polygon = L.polygon(region.points, {
-              color: rep.color, 
-              weight: 2, 
-              fillColor: rep.color, 
-              fillOpacity: 0.25
-            }).addTo(map);
-            
-            polygon.bindTooltip(rep.name, {direction: 'top'});
-            polygon.bindPopup(
-                '<div style="min-width:180px">' +
-                '<strong style="font-size:14px">' + rep.name + '</strong><br/>' +
-                '<span style="color:#666">' + (rep.code || '—') + '</span><br/>' +
-                '📞 ' + (rep.phone || '—') + '<br/>' +
-                '✉️ ' + (rep.email || '—') + '<br/>' +
-                '</div>'
-            );
-          });
-        }
-
-        // 3. Draw Pins
-        if (rep.pins && rep.pins.length > 0) {
-          rep.pins.forEach(function(pin) {
-            const marker = L.circleMarker([pin.lat, pin.lng], {
-              radius: 6, 
-              color: '#fff', 
-              weight: 2, 
-              fillColor: rep.color, 
-              fillOpacity: 1
-            }).addTo(map);
-            
-            marker.bindTooltip(rep.name + ' / ' + pin.name, {direction: 'top'});
-            marker.bindPopup(
-                '<div style="min-width:180px">' +
-                '<strong style="font-size:14px">' + pin.name + '</strong><br/>' +
-                '<span style="color:'+rep.color+'; font-weight: 500">' + rep.name + '</span><br/>' +
-                '📞 ' + (rep.phone || '—') + '<br/>' +
-                '✉️ ' + (rep.email || '—') +
-                '</div>'
-            );
-          });
-        }
       });
 
-      // 4. Fetch and draw city bounds
+      // Pass 2: City Boundaries (Fetched from IBGE)
       const neededCities = [];
       representatives.forEach(rep => {
         if (rep.cityBounds) {
           rep.cityBounds.forEach(city => {
-            neededCities.push({
-              rep: rep, 
-              cityId: city.id, 
-              cityName: city.name, 
-              cityState: city.state
-            });
+            neededCities.push({ rep, cityId: city.id, cityName: city.name, cityState: city.state });
           });
         }
       });
@@ -219,12 +187,7 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
           const res = await fetch('https://servicodados.ibge.gov.br/api/v3/malhas/municipios/' + item.cityId + '?formato=application/vnd.geo+json');
           const data = await res.json();
           L.geoJSON(data, {
-            style: { 
-              color: item.rep.color, 
-              weight: 2, 
-              fillColor: item.rep.color, 
-              fillOpacity: 0.25 
-            },
+            style: { color: item.rep.color, weight: 2, fillColor: item.rep.color, fillOpacity: 0.25 },
             onEachFeature: function(_, layer) {
               layer.bindTooltip(item.rep.name + ' / ' + item.cityName + ' - ' + item.cityState, { direction: 'top' });
               layer.bindPopup(
@@ -237,49 +200,64 @@ export async function generateHtmlExport(representatives: Representative[]): Pro
               );
             }
           }).addTo(map);
-        } catch(e) { 
-          console.error('Failed to load city boundaries for', item.cityId, e); 
-        }
+        } catch(e) { console.error(e); }
       }
+
+      // Pass 3: Custom Regions
+      representatives.forEach(rep => {
+        if (rep.regions && rep.regions.length > 0) {
+          rep.regions.forEach(function(region) {
+            const polygon = L.polygon(region.points, { color: rep.color, weight: 2, fillColor: rep.color, fillOpacity: 0.25 }).addTo(map);
+            polygon.bindTooltip(rep.name, {direction: 'top'});
+            polygon.bindPopup(
+              '<div style="min-width:180px">' +
+              '<strong style="font-size:14px">' + rep.name + '</strong><br/>' +
+              '📞 ' + (rep.phone || '—') + '<br/>' +
+              '✉️ ' + (rep.email || '—') +
+              '</div>'
+            );
+          });
+        }
+      });
+
+      // Pass 4: Pins (Top)
+      representatives.forEach(rep => {
+        if (rep.pins && rep.pins.length > 0) {
+          rep.pins.forEach(function(pin) {
+            L.circleMarker([pin.lat, pin.lng], { radius: 6, color: '#fff', weight: 2, fillColor: rep.color, fillOpacity: 1 }).addTo(map)
+              .bindTooltip(rep.name + ' / ' + pin.name)
+              .bindPopup(
+                '<div style="min-width:180px">' +
+                '<strong style="font-size:14px">' + pin.name + '</strong><br/>' +
+                '<span style="color:'+rep.color+'">' + rep.name + '</span>' +
+                '</div>'
+              );
+          });
+        }
+      });
     }
     
     let searchMarker = null;
     async function searchCity() {
       const query = document.getElementById('city-search').value;
       if (!query) return;
-      
       try {
         const response = await fetch('https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(query + ', Brasil'));
         const data = await response.json();
-        
         if (data && data.length > 0) {
           const lat = parseFloat(data[0].lat);
           const lon = parseFloat(data[0].lon);
-          
           map.setView([lat, lon], 10);
-          
-          if (searchMarker) {
-            map.removeLayer(searchMarker);
-          }
-          
-          // Add a red marker for the searched location
-          const icon = L.divIcon({
-            className: 'search-marker',
-            html: '<div style="background-color: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 4px rgba(0,0,0,0.4);"></div>',
-            iconSize: [16, 16],
-            iconAnchor: [8, 8]
-          });
-          
-          searchMarker = L.marker([lat, lon], {icon: icon})
-            .bindTooltip(data[0].display_name, {direction: 'top'})
-            .addTo(map);
-        } else {
-          alert('Cidade não encontrada.');
+          if (searchMarker) map.removeLayer(searchMarker);
+          searchMarker = L.marker([lat, lon], {
+            icon: L.divIcon({
+              className: 'search-marker',
+              html: '<div style="background-color: #ef4444; width: 12px; height: 12px; border-radius: 50%; border: 2px solid white;"></div>',
+              iconSize: [16, 16], iconAnchor: [8, 8]
+            })
+          }).bindTooltip(data[0].display_name).addTo(map);
         }
-      } catch (e) {
-        console.error('Erro na busca', e);
-        alert('Erro ao buscar a cidade. Tente novamente.');
-      }
+      } catch (e) { console.error(e); }
     }
 
     init();

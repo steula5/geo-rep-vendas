@@ -11,7 +11,7 @@ import RepresentativeForm from '@/components/RepresentativeForm';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Representative, CityBound } from '@/types/representative';
 import { CityBoundSearch } from './CityBoundSearch';
-
+import { generateHtmlExport } from '@/utils/exportHtml';
 interface AppSidebarProps {
   representatives: Representative[];
   selectedId: string | null;
@@ -83,6 +83,22 @@ export default function AppSidebar({
     a.download = 'representantes.json';
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportHtml = async () => {
+    try {
+      const htmlContent = await generateHtmlExport(representatives);
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'mapa-representantes-interativo.html';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Failed to create HTML export', e);
+      alert('Erro ao gerar o HTML Interativo. Tente novamente.');
+    }
   };
 
   const handleImportJson = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -441,6 +457,14 @@ export default function AppSidebar({
             <FileUp className="h-3 w-3 mr-1" /> Importar JSON
           </Button>
         </div>
+        <Button
+          size="sm"
+          variant="default"
+          className="w-full text-xs"
+          onClick={handleExportHtml}
+        >
+          <Download className="h-3 w-3 mr-2" /> Baixar HTML Interativo
+        </Button>
       </div>
 
       {/* Form dialog */}

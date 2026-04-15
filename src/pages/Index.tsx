@@ -16,6 +16,8 @@ const Index = () => {
     deleteRegion,
     addPin,
     deletePin,
+    addCityBound,
+    deleteCityBound,
     findRepresentativeByPoint,
     setRepresentatives,
   } = useRepresentatives();

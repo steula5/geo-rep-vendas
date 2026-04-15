@@ -90,7 +90,7 @@ export default function AppSidebar({
       // Fetch logo and convert to base64 for monolithic export
       let logoBase64 = "";
       try {
-        const response = await fetch('/Logo.png');
+        const response = await fetch('Logo.png');
         const blob = await response.blob();
         const reader = new FileReader();
         logoBase64 = await new Promise((resolve) => {
@@ -156,7 +156,7 @@ export default function AppSidebar({
       {/* Header */}
       <div className="p-4 border-b border-sidebar-border">
         <div className="flex items-center justify-center mb-1 py-1">
-          <img src="/Logo.png" alt="Steula Logo" className="h-10 w-auto object-contain" />
+          <img src="Logo.png" alt="Steula Logo" className="h-10 w-auto object-contain" />
         </div>
         <p className="text-[10px] text-center text-sidebar-muted uppercase tracking-widest font-medium">Gestão de Vendas</p>
       </div>
@@ -382,12 +382,15 @@ export default function AppSidebar({
           )}
         </div>
 
-        {/* Legend */}
+
+        {/* Legend hidden in main app as per user request */}
+        {/* 
         <RepresentativeLegend
           representatives={representatives}
           selectedId={selectedId}
           onSelect={onSelect}
         />
+        */}
 
         {/* Overlay */}
         <div>
